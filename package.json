@@ -1,0 +1,33 @@
+{
+  "name": "pebble-openai-translate",
+  "version": "0.1.0",
+  "author": "ShioriX",
+  "private": false,
+  "keywords": ["pebble", "openai", "translation", "tts"],
+  "dependencies": {
+    "pebble-clay": "^1.0.4"
+  },
+  "pebble": {
+    "displayName": "OpenAI Translate",
+    "uuid": "68f3d0fd-fbd2-45c4-98f6-d279b58d1719",
+    "projectType": "native",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "capabilities": ["configurable"],
+    "targetPlatforms": ["emery"],
+    "messageKeys": [
+      "COMMAND",
+      "TEXT",
+      "CHUNK",
+      "OPENAI_API_KEY",
+      "TARGET_LANGUAGE",
+      "VOICE",
+      "MODEL",
+      "FONT_SIZE",
+      "CUSTOM_INSTRUCTIONS"
+    ],
+    "watchapp": {
+      "watchface": false
+    }
+  }
+}
