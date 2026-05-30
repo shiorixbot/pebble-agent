@@ -1,8 +1,8 @@
-# Pebble OpenAI Translate
+# OpenClaw Wrist for Pebble
 
-A Pebble voice translation watchapp powered by OpenAI.
+A Pebble wrist client for phrase translation and OpenClaw voice prompts.
 
-MVP flow:
+Translate mode flow:
 
 1. Press Select on the watch.
 2. Pebble Dictation converts speech to source text.
@@ -14,17 +14,35 @@ This is intentionally **not** a fork of `ericlmccormick/Pebble_Gemini`, because 
 
 ## Current status
 
-Prototype scaffold. The first target is a phrase-translation MVP, not continuous realtime audio.
+Prototype scaffold. The first target is phrase translation plus OpenClaw prompt/response, not continuous realtime audio.
 
 OpenAI Realtime translation needs a streamed microphone audio source. Pebble's public Dictation API returns final text, not raw live audio, so true realtime translation likely needs a phone-side companion/WebRTC path later.
+
+## Modes
+
+### Translate
+
+Uses Pebble Dictation, OpenAI text translation, and OpenAI TTS.
+
+### Ask OpenClaw
+
+Uses Pebble Dictation, sends the text to an OpenClaw Gateway `POST /v1/responses` endpoint, displays the reply, and speaks it if an OpenAI API key is also configured for TTS.
+
+OpenClaw Gateway requirements:
+
+- `gateway.http.endpoints.responses.enabled = true`
+- reachable HTTPS URL from the paired phone
+- gateway token/password if auth is enabled
 
 ## Configuration
 
 Open the Pebble configuration page and set:
 
-- OpenAI API key
+- Mode: `Translate phrase` or `Ask OpenClaw`
+- OpenAI API key, required for Translate mode and optional TTS in OpenClaw mode
 - Target language, e.g. `Japanese`, `English`, `Chinese`, `Spanish`
 - TTS voice
+- OpenClaw Gateway URL/token/agent/session for OpenClaw mode
 - Optional custom translation instructions
 
 ## Build

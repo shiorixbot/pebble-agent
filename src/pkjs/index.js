@@ -1,10 +1,21 @@
 var Clay = require('pebble-clay');
 
 var clayConfig = [
-  { type: 'heading', defaultValue: 'OpenAI Translate' },
+  { type: 'heading', defaultValue: 'OpenClaw Wrist' },
   {
     type: 'section',
     items: [
+      { type: 'heading', defaultValue: 'Mode' },
+      {
+        type: 'select',
+        messageKey: 'APP_MODE',
+        label: 'Select action',
+        defaultValue: 'translate',
+        options: [
+          { label: 'Translate phrase', value: 'translate' },
+          { label: 'Ask OpenClaw', value: 'openclaw' }
+        ]
+      },
       { type: 'heading', defaultValue: 'OpenAI' },
       {
         type: 'input',
@@ -47,6 +58,39 @@ var clayConfig = [
   {
     type: 'section',
     items: [
+      { type: 'heading', defaultValue: 'OpenClaw' },
+      {
+        type: 'input',
+        messageKey: 'OPENCLAW_URL',
+        label: 'Gateway URL',
+        description: 'Example: https://your-gateway.example.com',
+        attributes: { type: 'url', autocorrect: 'off', autocapitalize: 'off' }
+      },
+      {
+        type: 'input',
+        messageKey: 'OPENCLAW_TOKEN',
+        label: 'Gateway token/password',
+        attributes: { type: 'password', autocorrect: 'off', autocapitalize: 'off' }
+      },
+      {
+        type: 'input',
+        messageKey: 'OPENCLAW_AGENT',
+        label: 'Agent id',
+        defaultValue: 'default',
+        attributes: { type: 'text', autocorrect: 'off', autocapitalize: 'off' }
+      },
+      {
+        type: 'input',
+        messageKey: 'OPENCLAW_SESSION',
+        label: 'Session key',
+        defaultValue: 'pebble',
+        attributes: { type: 'text', autocorrect: 'off', autocapitalize: 'off' }
+      }
+    ]
+  },
+  {
+    type: 'section',
+    items: [
       { type: 'heading', defaultValue: 'Behavior' },
       {
         type: 'input',
@@ -71,7 +115,12 @@ var clayConfig = [
 
 var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
 
+var appMode = localStorage.getItem('APP_MODE') || 'translate';
 var openaiApiKey = localStorage.getItem('OPENAI_API_KEY') || '';
+var openclawUrl = localStorage.getItem('OPENCLAW_URL') || '';
+var openclawToken = localStorage.getItem('OPENCLAW_TOKEN') || '';
+var openclawAgent = localStorage.getItem('OPENCLAW_AGENT') || 'default';
+var openclawSession = localStorage.getItem('OPENCLAW_SESSION') || 'pebble';
 var targetLanguage = localStorage.getItem('TARGET_LANGUAGE') || 'Japanese';
 var voice = localStorage.getItem('VOICE') || 'alloy';
 var model = localStorage.getItem('MODEL') || 'gpt-4.1-mini';
@@ -104,7 +153,12 @@ Pebble.addEventListener('showConfiguration', function() {
 Pebble.addEventListener('webviewclosed', function(e) {
   if (!e || !e.response) return;
   var settings = JSON.parse(decodeURIComponent(e.response));
+  saveSetting(settings, 'APP_MODE', function(v) { appMode = v || 'translate'; });
   saveSetting(settings, 'OPENAI_API_KEY', function(v) { openaiApiKey = v; });
+  saveSetting(settings, 'OPENCLAW_URL', function(v) { openclawUrl = v || ''; });
+  saveSetting(settings, 'OPENCLAW_TOKEN', function(v) { openclawToken = v || ''; });
+  saveSetting(settings, 'OPENCLAW_AGENT', function(v) { openclawAgent = v || 'default'; });
+  saveSetting(settings, 'OPENCLAW_SESSION', function(v) { openclawSession = v || 'pebble'; });
   saveSetting(settings, 'TARGET_LANGUAGE', function(v) { targetLanguage = v || 'Japanese'; });
   saveSetting(settings, 'VOICE', function(v) { voice = v || 'alloy'; });
   saveSetting(settings, 'MODEL', function(v) { model = v || 'gpt-4.1-mini'; });
@@ -124,12 +178,16 @@ Pebble.addEventListener('ready', function() {
 Pebble.addEventListener('appmessage', function(e) {
   var dict = e.payload || {};
   if (dict.COMMAND === 'DICTATION') {
-    openaiApiKey = localStorage.getItem('OPENAI_API_KEY') || openaiApiKey;
-    if (!openaiApiKey) {
-      sendText('Missing OpenAI API key. Open settings in the Pebble app.');
-      return;
+    refreshSettings();
+    if (appMode === 'openclaw') {
+      askOpenClawAndMaybeSpeak(dict.TEXT || '');
+    } else {
+      if (!openaiApiKey) {
+        sendText('Missing OpenAI API key. Open settings in the Pebble app.');
+        return;
+      }
+      translateAndSpeak(dict.TEXT || '');
     }
-    translateAndSpeak(dict.TEXT || '');
   }
 });
 
@@ -141,8 +199,94 @@ function saveSetting(settings, key, setter) {
   }
 }
 
+function refreshSettings() {
+  appMode = localStorage.getItem('APP_MODE') || appMode || 'translate';
+  openaiApiKey = localStorage.getItem('OPENAI_API_KEY') || openaiApiKey;
+  openclawUrl = localStorage.getItem('OPENCLAW_URL') || openclawUrl;
+  openclawToken = localStorage.getItem('OPENCLAW_TOKEN') || openclawToken;
+  openclawAgent = localStorage.getItem('OPENCLAW_AGENT') || openclawAgent || 'default';
+  openclawSession = localStorage.getItem('OPENCLAW_SESSION') || openclawSession || 'pebble';
+  targetLanguage = localStorage.getItem('TARGET_LANGUAGE') || targetLanguage || 'Japanese';
+  voice = localStorage.getItem('VOICE') || voice || 'alloy';
+  model = localStorage.getItem('MODEL') || model || 'gpt-4.1-mini';
+  customInstructions = localStorage.getItem('CUSTOM_INSTRUCTIONS') || customInstructions || '';
+}
+
 function sendText(text) {
   Pebble.sendAppMessage({ COMMAND: 'TEXT_RESPONSE', TEXT: String(text).substring(0, 2048) });
+}
+
+
+function askOpenClawAndMaybeSpeak(prompt) {
+  readyAudioQueue = [];
+  isSendingBLE = false;
+  jsAdpcmValpred = 0;
+  jsAdpcmIndex = 0;
+
+  if (!openclawUrl) {
+    sendText('Missing OpenClaw Gateway URL. Open settings in the Pebble app.');
+    return;
+  }
+
+  askOpenClaw(prompt)
+    .then(function(replyText) {
+      sendText(replyText);
+      if (!openaiApiKey) return null;
+      return fetchSpeechPcm(replyText);
+    })
+    .then(function(pcm24k) {
+      if (!pcm24k) return;
+      var pcm8k = downsamplePcm(pcm24k, 3);
+      var adpcmBytes = encodeADPCM(lowPassFilter(pcm8k));
+      readyAudioQueue.push(adpcmBytes);
+      startBLESendLoop();
+    })
+    .catch(function(err) {
+      console.log('OpenClaw error', err && err.message ? err.message : err);
+      sendText('OpenClaw error: ' + String(err && err.message ? err.message : err).substring(0, 80));
+    });
+}
+
+function askOpenClaw(prompt) {
+  var baseUrl = openclawUrl.replace(/\/+$/, '');
+  var headers = { 'Content-Type': 'application/json' };
+  if (openclawToken) headers.Authorization = 'Bearer ' + openclawToken;
+  if (openclawAgent && openclawAgent !== 'default') headers['x-openclaw-agent-id'] = openclawAgent;
+  if (openclawSession) headers['x-openclaw-session-key'] = openclawSession;
+  headers['x-openclaw-message-channel'] = 'pebble';
+
+  return fetch(baseUrl + '/v1/responses', {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({
+      model: openclawAgent && openclawAgent !== 'default' ? 'openclaw/' + openclawAgent : 'openclaw/default',
+      input: prompt,
+      user: openclawSession || 'pebble',
+      max_output_tokens: 700
+    })
+  })
+  .then(function(response) {
+    return response.json().then(function(json) {
+      if (!response.ok) throw new Error((json.error && json.error.message) || response.statusText);
+      return json;
+    });
+  })
+  .then(extractResponseText);
+}
+
+function extractResponseText(json) {
+  if (json.output_text) return json.output_text.trim();
+  if (json.output && json.output.length) {
+    var chunks = [];
+    for (var i = 0; i < json.output.length; i++) {
+      var content = json.output[i].content || [];
+      for (var j = 0; j < content.length; j++) {
+        if (content[j].text) chunks.push(content[j].text);
+      }
+    }
+    if (chunks.length) return chunks.join('\n').trim();
+  }
+  throw new Error('empty OpenClaw response');
 }
 
 function translateAndSpeak(sourceText) {

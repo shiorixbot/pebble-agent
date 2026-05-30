@@ -1,20 +1,30 @@
 {
-  "name": "pebble-openai-translate",
+  "name": "pebble-openclaw",
   "version": "0.1.0",
   "author": "ShioriX",
   "private": false,
-  "keywords": ["pebble", "openai", "translation", "tts"],
+  "keywords": [
+    "pebble",
+    "openclaw",
+    "openai",
+    "translation",
+    "tts"
+  ],
   "dependencies": {
     "pebble-clay": "^1.0.4"
   },
   "pebble": {
-    "displayName": "OpenAI Translate",
+    "displayName": "OpenClaw Wrist",
     "uuid": "68f3d0fd-fbd2-45c4-98f6-d279b58d1719",
     "projectType": "native",
     "sdkVersion": "3",
     "enableMultiJS": true,
-    "capabilities": ["configurable"],
-    "targetPlatforms": ["emery"],
+    "capabilities": [
+      "configurable"
+    ],
+    "targetPlatforms": [
+      "emery"
+    ],
     "messageKeys": [
       "COMMAND",
       "TEXT",
@@ -24,6 +34,11 @@
       "VOICE",
       "MODEL",
       "FONT_SIZE",
+      "APP_MODE",
+      "OPENCLAW_URL",
+      "OPENCLAW_TOKEN",
+      "OPENCLAW_AGENT",
+      "OPENCLAW_SESSION",
       "CUSTOM_INSTRUCTIONS"
     ],
     "watchapp": {
