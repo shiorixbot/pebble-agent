@@ -1,34 +1,27 @@
-# OpenClaw Wrist for Pebble
+# Pebble Agent
 
-A Pebble wrist client for phrase translation and OpenClaw voice prompts.
-
-Translate mode flow:
-
-1. Press Select on the watch.
-2. Pebble Dictation converts speech to source text.
-3. The phone-side PebbleKit JS calls OpenAI to translate that text.
-4. The translated text is shown on the watch.
-5. OpenAI TTS generates speech, which is streamed back to the watch as ADPCM chunks.
-
-This is intentionally **not** a fork of `ericlmccormick/Pebble_Gemini`, because that repository currently has no license. It uses the same product idea — a Pebble voice assistant/translator — but this codebase is a clean MIT-licensed implementation.
-
-## Current status
-
-Prototype scaffold. The first target is phrase translation plus OpenClaw prompt/response, not continuous realtime audio.
-
-OpenAI Realtime translation needs a streamed microphone audio source. Pebble's public Dictation API returns final text, not raw live audio, so true realtime translation likely needs a phone-side companion/WebRTC path later.
+A Pebble wrist client for quick phrase translation and agent chat.
 
 ## Modes
 
 ### Translate
 
-Uses Pebble Dictation, OpenAI text translation, and OpenAI TTS.
+Default mode. Press Select, speak a phrase, and the watch shows a translated answer and plays generated speech.
 
-### Ask OpenClaw
+Flow:
 
-Uses Pebble Dictation, sends the text to an OpenClaw Gateway `POST /v1/responses` endpoint, displays the reply, and speaks it if an OpenAI API key is also configured for TTS.
+1. Pebble Dictation converts speech to source text.
+2. Phone-side PebbleKit JS calls OpenAI to translate that text.
+3. The translated text is shown on the watch.
+4. OpenAI TTS generates speech, which is streamed back to the watch as ADPCM chunks.
 
-OpenClaw Gateway requirements:
+### Chat
+
+Press Select, speak a prompt, and the watch sends it to an OpenResponses-compatible `/v1/responses` endpoint. The reply is shown on the watch and, if an OpenAI API key is configured, spoken with TTS.
+
+This is agent-agnostic: any service that accepts an OpenResponses-style `POST /v1/responses` request can be used. OpenClaw works well here when its Responses HTTP endpoint is enabled.
+
+For OpenClaw, set Chat model to `openclaw/default`. Gateway requirements:
 
 - `gateway.http.endpoints.responses.enabled = true`
 - reachable HTTPS URL from the paired phone
@@ -38,12 +31,20 @@ OpenClaw Gateway requirements:
 
 Open the Pebble configuration page and set:
 
-- Mode: `Translate phrase` or `Ask OpenClaw`
-- OpenAI API key, required for Translate mode and optional TTS in OpenClaw mode
+- Mode: `Translate phrase` or `Chat`
+- OpenAI API key, required for Translate mode and optional TTS in Chat mode
 - Target language, e.g. `Japanese`, `English`, `Chinese`, `Spanish`
 - TTS voice
-- OpenClaw Gateway URL/token/agent/session for OpenClaw mode
+- Chat endpoint/base URL, token, model, and session/user key for Chat mode
+  - OpenAI example: endpoint `https://api.openai.com`, model `gpt-4.1-mini`
+  - OpenClaw example: endpoint your Gateway URL, model `openclaw/default`
 - Optional custom translation instructions
+
+## Current status
+
+Prototype scaffold. The first target is phrase translation plus agent prompt/response, not continuous realtime audio.
+
+OpenAI Realtime translation needs a streamed microphone audio source. Pebble's public Dictation API returns final text, not raw live audio, so true realtime translation likely needs a phone-side companion/WebRTC path later.
 
 ## Build
 
@@ -53,6 +54,10 @@ Requires a Pebble/Rebble SDK environment.
 npm install
 pebble build
 ```
+
+## Credits
+
+Inspired by Eric McCormick's `Pebble_Gemini` project.
 
 ## Notes
 

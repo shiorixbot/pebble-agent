@@ -283,7 +283,7 @@ static void window_load(Window *window) {
   GRect bounds = layer_get_bounds(root);
 
   s_title_layer = text_layer_create(GRect(8, 34, bounds.size.w - 16, 34));
-  text_layer_set_text(s_title_layer, "OpenClaw Wrist");
+  text_layer_set_text(s_title_layer, "Pebble Agent");
   text_layer_set_text_alignment(s_title_layer, GTextAlignmentCenter);
   text_layer_set_font(s_title_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   layer_add_child(root, text_layer_get_layer(s_title_layer));
